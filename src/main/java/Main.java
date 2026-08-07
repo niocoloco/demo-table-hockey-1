@@ -1,6 +1,6 @@
 public class Main {
     public static void main(String[] args) {
-        Game game = new Game(new Player ("A"), new Player("B"), 10);
+        Game game = new Game(new Player ("A"), new Player("B"), 30);
         game.startSimulation();
     }
 }

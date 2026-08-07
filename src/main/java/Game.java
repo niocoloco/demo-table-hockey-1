@@ -1,3 +1,5 @@
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -55,21 +57,28 @@ public class Game {
                 System.out.println("La partita è finita in pareggio!");
             }
 
+            System.out.println("Tiri di " + P1.username + ":" + shots_on_goal_P1);
+
             if(shots_on_goal_P1 != 0){
                 accuracy_P1 = (double) score_P1 / shots_on_goal_P1 * 100.0;
-                System.out.println("Precisione di " + P1.username + ": " + accuracy_P1 + "%");
+                System.out.println("Precisione di " + P1.username + ": " + new BigDecimal(accuracy_P1).setScale(2, RoundingMode.FLOOR) + "%");
             }
             else {
                 System.out.println("Precisione di " + P1.username + ": 0%");
             }
 
+            System.out.println("Tiri di " + P2.username + ":" + shots_on_goal_P2);
+
             if(shots_on_goal_P2 != 0){
                 accuracy_P2 = (double) score_P2 / shots_on_goal_P2 * 100.0;
-                System.out.println("Precisione di " + P2.username + ": " + accuracy_P2 + "%");
+                System.out.println("Precisione di " + P2.username + ": " + new BigDecimal(accuracy_P2).setScale(2, RoundingMode.FLOOR) + "%");
+                // new BigDecimal().setScale(2, RoundingMode.FLOOR)
             }
             else {
                 System.out.println("Precisione di " + P2.username + ": 0%");
             }
+
+            System.out.println("Velocità media del disco: " + new BigDecimal((double) avg_disk_speed_km_h / game_lenght_s).setScale(2, RoundingMode.FLOOR) + " km/h");
 
             return;
         }
@@ -119,5 +128,7 @@ public class Game {
                 System.out.println(" il disco ha effettuato un rimbalzo sulla sponda!");
             }
         }
+
+        avg_disk_speed_km_h += random.nextDouble(25, 60);
     }
 }
