@@ -1,3 +1,5 @@
+import org.eclipse.paho.client.mqttv3.MqttException;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Random;
@@ -6,6 +8,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class Game {
+    private Publisher publisher;
     Player P1;
     Player P2;
 
@@ -25,10 +28,11 @@ public class Game {
 
     int game_lenght_s;
 
-    public Game(Player p1, Player p2, int game_lenght_s) {
+    public Game(Player p1, Player p2, int game_lenght_s) throws MqttException {
         P1 = p1;
         P2 = p2;
         this.game_lenght_s = game_lenght_s;
+        this.publisher = new Publisher("");
     }
 
     ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -44,17 +48,24 @@ public class Game {
     private void tick () {
         elapsed_time++;
         if (elapsed_time == game_lenght_s) {
+
             scheduler.shutdown();
+
+            String winner = "PAREGGIO";
+
             System.out.println("PARTITA TERMINATA");
             System.out.println("Risultato:  ["+P1.username+"] " + score_P1 + " : ["+P2.username+"] " + score_P2);
             if (score_P1 > score_P2){
                 System.out.println(P1.username + " ha vinto la partita!");
+                winner = P1.username;
             }
             else if (score_P1 < score_P2){
                 System.out.println(P2.username + " ha vinto la partita!");
+                winner = P2.username;
             }
             else if (score_P1 == score_P2){
                 System.out.println("La partita è finita in pareggio!");
+                winner = "PAREGGIO";
             }
 
             System.out.println("Tiri di " + P1.username + ":" + shots_on_goal_P1);
@@ -79,6 +90,30 @@ public class Game {
             }
 
             System.out.println("Velocità media del disco: " + new BigDecimal((double) avg_disk_speed_km_h / game_lenght_s).setScale(2, RoundingMode.FLOOR) + " km/h");
+
+            double formattedAccP1 = (shots_on_goal_P1 != 0) ? new BigDecimal(accuracy_P1).setScale(2, RoundingMode.FLOOR).doubleValue() : 0.0;
+            double formattedAccP2 = (shots_on_goal_P2 != 0) ? new BigDecimal(accuracy_P2).setScale(2, RoundingMode.FLOOR).doubleValue() : 0.0;
+            BigDecimal formattedSpeed = new BigDecimal((double) avg_disk_speed_km_h / game_lenght_s).setScale(2, RoundingMode.FLOOR);
+
+            String jsonPayload = String.format(
+                    "{\n" +
+                            "  \"winner\": \"%s\",\n" +
+                            "  \"player1\": {\"name\": \"%s\", \"score\": %d, \"shots\": %d, \"accuracy\": %s},\n" +
+                            "  \"player2\": {\"name\": \"%s\", \"score\": %d, \"shots\": %d, \"accuracy\": %s},\n" +
+                            "  \"avg_disk_speed_km_h\": %s\n" +
+                            "}",
+                    winner,
+                    P1.username, score_P1, shots_on_goal_P1, formattedAccP1,
+                    P2.username, score_P2, shots_on_goal_P2, formattedAccP2,
+                    formattedSpeed
+            );
+
+            try {
+                publisher.publishGameSummary(jsonPayload);
+            } catch (MqttException e) {
+                throw new RuntimeException(e);
+            }
+            publisher.disconnect();
 
             return;
         }
