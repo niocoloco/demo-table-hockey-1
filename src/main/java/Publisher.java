@@ -1,16 +1,19 @@
 import org.eclipse.paho.client.mqttv3.*;
-import java.util.Date;
 
 public class Publisher {
-    public static final String BROKER_URL = "tcp://test.mosquitto.org:1883";
-    public static final String TOPIC = "hockey/game/summary";
+    //  URL del broker
+    //public static final String BROKER_URL = "tcp://test.mosquitto.org:1883";
+    public static final String BROKER_URL = "tcp://broker.hivemq.com:1883";
     private MqttClient client;
-    private Date date = new Date();
-
     private String broker_url;
+    private String topic;
 
-    public Publisher(String broker_url) throws MqttException {
+    public Publisher(String broker_url, String gameId) throws MqttException {
+        //  se non modificato utilizza il link standard di mosquitto
         this.broker_url = (broker_url != null && !broker_url.isEmpty()) ? broker_url : BROKER_URL;
+
+        //  gameId identifica un tavolo da gioco (es. tavolo-1)
+        this.topic = "hockey/" + gameId + "/events";
         connect();
     }
 
@@ -20,41 +23,39 @@ public class Publisher {
             connOpts.setCleanSession(true);
             connOpts.setConnectionTimeout(10);
 
-            String lwtMessage = "{\"status\": \"CRASHED\", \"message\": \"Il simulatore si è interrotto\"}";
+            //  fine inaspettata della partita
+            String lwtMessage = "{\"event_type\": \"CRASHED\", \"data\": {}}";
+            connOpts.setWill(this.topic, lwtMessage.getBytes(), 1, false);
 
-            connOpts.setWill("hockey/game/summary", lwtMessage.getBytes(), 1, false);
-
-            String clientId = "GamePublisher-" + System.currentTimeMillis();
+            //  identificatore univoco
+            String clientId = "SensorPublisher-" + System.currentTimeMillis();
             client = new MqttClient(this.broker_url, clientId);
-
             client.connect(connOpts);
         } catch (MqttException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void publishGameSummary(String jsonPayload) throws MqttException {
+    //  pubblicazione evento nel topic
+    public void publishEvent(String jsonPayload) throws MqttException {
         if(client != null && client.isConnected()) {
             MqttMessage message = new MqttMessage(jsonPayload.getBytes());
             message.setQos(1);
-
-            client.publish(TOPIC, message);
-            System.out.println("Message pubblicato su [" + TOPIC + "]: " + jsonPayload);
-        }
-        else {
+            client.publish(this.topic, message);
+        } else {
             System.err.println("Impossibile inviare: Client MQTT non connesso.");
         }
     }
 
+    //  disconnessione del publisher
     public void disconnect() {
         try {
             if (client != null && client.isConnected()) {
                 client.disconnect();
-                System.out.println("Disconnessione da MQTT completata.");
+                System.out.println("Disconnessione completata.");
             }
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
-
 }
